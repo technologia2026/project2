@@ -1,0 +1,14 @@
+{
+  "name": "Flutter",
+  "image": "ghcr.io/cirruslabs/flutter:stable",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dart-code.flutter",
+        "dart-code.dart-code"
+      ]
+    }
+  },
+  // 이 아랫줄을 추가하면 켜질 때마다 자동으로 패키지를 설치합니다.
+  "postCreateCommand": "flutter pub get"
+}
