@@ -3,14 +3,30 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart'; 
 import 'screens/settings_screen.dart'; 
 import 'screens/history_screen.dart'; // 💡 1. 새로 만든 기록 화면을 임포트합니다!
+import 'services/notification_service.dart'; // 👈 이거 추가
+import 'package:flutter/foundation.dart';
 
-void main() => runApp(
-      const MaterialApp(
-        home: MainNavigation(),
-        debugShowCheckedModeBanner: false,
-      ),
-    );
+void main() async {
+  // 1. 플러터 엔진과 위젯 바인딩 초기화 (앱 실행 전 세팅할 때 필수)
+  WidgetsFlutterBinding.ensureInitialized(); 
+  
+if (!kIsWeb) { 
+    try {
+      await NotificationService().init();
+      await NotificationService().requestPermissions();
+    } catch (e) {
+      print("알림 초기화 실패 (모바일 아님): $e");
+    }
+  }
 
+  // 3. 앱 실행
+  runApp(
+    const MaterialApp(
+      home: MainNavigation(),
+      debugShowCheckedModeBanner: false,
+    ),
+  );
+}
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
   @override

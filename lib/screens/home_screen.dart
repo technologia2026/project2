@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; 
 import '../models/medication.dart';
 import 'add_medication_screen.dart';
+import '../services/notification_service.dart';
 
 class YakShotUI extends StatefulWidget {
   const YakShotUI({super.key});
@@ -25,6 +26,7 @@ class _YakShotUIState extends State<YakShotUI> {
   @override
   void initState() {
     super.initState();
+    NotificationService().requestPermissions();
     _loadMedsForDate();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
   }
@@ -216,9 +218,16 @@ class _YakShotUIState extends State<YakShotUI> {
     );
   }
 
-  // 상단 요약 카드 (진도율)
+ // 상단 요약 카드 (진도율)
   Widget _buildSummaryCard() {
     double progress = _totalDoses == 0 ? 0.0 : _completedDoses / _totalDoses;
+    
+    // 선택된 날짜가 오늘인지 확인해서 텍스트 다르게 표시
+    final now = DateTime.now();
+    bool isToday = _selectedDate.year == now.year && 
+                   _selectedDate.month == now.month && 
+                   _selectedDate.day == now.day;
+    String displayDate = isToday ? "오늘" : DateFormat('M월 d일').format(_selectedDate);
 
     return Container(
       width: double.infinity, padding: const EdgeInsets.all(20),
@@ -229,7 +238,7 @@ class _YakShotUIState extends State<YakShotUI> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('선택한 날짜의 복용 진도', style: TextStyle(color: Colors.white70, fontSize: 16)),
+          Text('$displayDate의 복용 진도', style: const TextStyle(color: Colors.white70, fontSize: 16)), // 여기 수정됨!
           const SizedBox(height: 10),
           Text('$_totalDoses회 중 $_completedDoses회 완료!', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),
@@ -262,7 +271,16 @@ class _YakShotUIState extends State<YakShotUI> {
               children: [
                 const CircleAvatar(backgroundColor: Color(0xFFF0F2FF), child: Icon(Icons.medication, color: Color(0xFF667eea))),
                 const SizedBox(width: 15),
-                Expanded(child: Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                Expanded(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(med.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      const SizedBox(height: 4),
+      Text('${med.type} | ${med.dosage}', style: const TextStyle(color: Colors.grey, fontSize: 14)),
+    ],
+  ),
+),
                 
                 // 수정/삭제 메뉴
                 PopupMenuButton<String>(
