@@ -1,30 +1,38 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart'; 
 import 'screens/settings_screen.dart'; 
-import 'screens/history_screen.dart'; // 💡 1. 새로 만든 기록 화면을 임포트합니다!
-import 'services/notification_service.dart'; // 👈 이거 추가
-import 'package:flutter/foundation.dart';
+import 'screens/history_screen.dart'; 
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); 
   
-  // 🚀 방어막: 웹이든 폰이든 가리지 않고 무조건 초기화를 먼저 때려 넣습니다!
-  try {
-    await NotificationService().init();
-    await NotificationService().requestPermissions();
-  } catch (e) {
-    print("알림 초기화 중 일부 에러 발생(무시하고 진행): $e");
-  }
+  final notiService = NotificationService();
+  await notiService.init();
+  await notiService.requestPermissions();
 
-  // 3. 앱 실행
-  runApp(
-    const MaterialApp(
-      home: MainNavigation(),
-      debugShowCheckedModeBanner: false,
-    ),
-  );
+  runApp(const MyApp());
 }
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'YakShot',
+      debugShowCheckedModeBanner: false,
+      // 💡 서비스에 있는 키를 사용하여 어디서든 화면 이동 가능하게 설정
+      navigatorKey: NotificationService.navigatorKey, 
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+        useMaterial3: true,
+      ),
+      home: const MainNavigation(),
+    );
+  }
+}
+
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
   @override
@@ -34,14 +42,11 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
   
-  // 💡 2. _pages 리스트의 1번 인덱스를 HistoryScreen으로 교체합니다!
   final List<Widget> _pages = [
     const YakShotUI(),
-    const HistoryScreen(), // <- 여기를 바꿨어요!
+    const HistoryScreen(),
     const SettingsScreen(),
   ];
-
-// ... (아래 코드는 기존과 동일) ...
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +61,8 @@ class _MainNavigationState extends State<MainNavigation> {
         backgroundColor: Colors.white,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: '기록'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: '설정'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: '기록'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '설정'),
         ],
       ),
     );
