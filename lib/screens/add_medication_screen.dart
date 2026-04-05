@@ -7,7 +7,6 @@ import 'package:uuid/uuid.dart';
 import '../models/medication.dart';
 import '../services/notification_service.dart';
 
-
 class AddMedicationScreen extends StatefulWidget {
   final Medication? medicationToEdit;
 
@@ -26,7 +25,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
 
   final List<String> _medTypes = ['알약', '캡슐', '가루약', '물약', '기타'];
 
-@override
+  @override
   void initState() {
     super.initState();
     if (widget.medicationToEdit != null) {
@@ -38,61 +37,78 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
     }
   }
 
-Future<void> _saveMedication() async {
-    if (_nameController.text.isEmpty || _doseTimes.isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final String? medsJson = prefs.getString('medications');
-    List<Medication> allMeds = [];
-    
-    if (medsJson != null) {
-      List<dynamic> decoded = jsonDecode(medsJson);
-      allMeds = decoded.map((m) => Medication.fromJson(m)).toList();
+ Future<void> _saveMedication() async {
+    // 1. 빈칸 검사 (경고 메시지 추가!)
+    // 이름이나 시간이 비어있으면 조용히 멈추지 않고, 사용자에게 알려줍니다.
+    if (_nameController.text.isEmpty || _doseTimes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('약 이름과 복용 시간을 모두 입력해주세요! 💊')),
+      );
+      return; 
     }
 
-    // 💡 알림 등록에 사용할 '최종 약 데이터'를 담을 변수를 미리 만듭니다.
-    late Medication medicationToSchedule;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? medsJson = prefs.getString('medications');
+      List<Medication> allMeds = [];
+      
+      if (medsJson != null) {
+        List<dynamic> decoded = jsonDecode(medsJson);
+        allMeds = decoded.map((m) => Medication.fromJson(m)).toList();
+      }
 
-    if (widget.medicationToEdit != null) {
-      // 수정 모드
-      int index = allMeds.indexWhere((m) => m.id == widget.medicationToEdit!.id);
-      if (index != -1) {
-        allMeds[index] = Medication(
-          id: widget.medicationToEdit!.id,
+      late Medication medicationToSchedule;
+
+      if (widget.medicationToEdit != null) {
+        // 수정 모드
+        int index = allMeds.indexWhere((m) => m.id == widget.medicationToEdit!.id);
+        if (index != -1) {
+          allMeds[index] = Medication(
+            id: widget.medicationToEdit!.id,
+            name: _nameController.text,
+            type: _selectedType, 
+            dosage: _dosageController.text, 
+            doseTimes: _doseTimes,
+            selectedDays: _selectedDays,
+            completionStatus: widget.medicationToEdit!.completionStatus,
+          );
+          medicationToSchedule = allMeds[index]; 
+        }
+      } else {
+        // 신규 추가 모드
+        final newMed = Medication(
+          id: const Uuid().v4(), 
           name: _nameController.text,
           type: _selectedType, 
           dosage: _dosageController.text, 
           doseTimes: _doseTimes,
           selectedDays: _selectedDays,
-          completionStatus: widget.medicationToEdit!.completionStatus,
+          completionStatus: {},
         );
-        medicationToSchedule = allMeds[index]; // 수정한 데이터를 변수에 할당
+        allMeds.add(newMed);
+        medicationToSchedule = newMed; 
       }
-    } else {
-      // 신규 추가 모드
-      final newMed = Medication(
-        id: const Uuid().v4(), 
-        name: _nameController.text,
-        type: _selectedType, 
-        dosage: _dosageController.text, 
-        doseTimes: _doseTimes,
-        selectedDays: _selectedDays,
-        completionStatus: {},
-      );
-      allMeds.add(newMed);
-      medicationToSchedule = newMed; // 새로 만든 데이터를 변수에 할당
+
+      // 데이터 저장
+      await prefs.setString('medications', jsonEncode(allMeds.map((m) => m.toJson()).toList()));
+      
+      // 알림 등록
+      await NotificationService().scheduleMedicationNotifications(medicationToSchedule);
+
+      // 🚀 2. 모든 저장이 성공적으로 끝났다면, 자연스럽게 "뒤로 가기" (정상 작동)
+      if (mounted) {
+        Navigator.pop(context); 
+      }
+
+    } catch (e) {
+      // 3. 만약 알림 설정 등에서 에러가 나면 화면이 멈추지 않고 에러 메시지를 띄워줍니다.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 중 문제가 발생했어요: $e')),
+        );
+      }
     }
-
-    // 데이터 저장
-    await prefs.setString('medications', jsonEncode(allMeds.map((m) => m.toJson()).toList()));
-    
-    // 🔔 드디어 안전하게 알림 스케줄 등록!
-    // 위에서 만든 'medicationToSchedule'을 사용하니까 이제 에러가 안 날 거예요.
-    await NotificationService().scheduleMedicationNotifications(medicationToSchedule);
-
-    if (mounted) Navigator.pop(context);
   }
-
   // 구린 기본 픽커 대신 하단에서 올라오는 쿠퍼티노(아이폰 스타일) 픽커 사용
   void _showTimePickerBottomSheet() {
     DateTime tempTime = DateTime.now();

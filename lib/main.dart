@@ -7,16 +7,14 @@ import 'services/notification_service.dart'; // 👈 이거 추가
 import 'package:flutter/foundation.dart';
 
 void main() async {
-  // 1. 플러터 엔진과 위젯 바인딩 초기화 (앱 실행 전 세팅할 때 필수)
   WidgetsFlutterBinding.ensureInitialized(); 
   
-if (!kIsWeb) { 
-    try {
-      await NotificationService().init();
-      await NotificationService().requestPermissions();
-    } catch (e) {
-      print("알림 초기화 실패 (모바일 아님): $e");
-    }
+  // 🚀 방어막: 웹이든 폰이든 가리지 않고 무조건 초기화를 먼저 때려 넣습니다!
+  try {
+    await NotificationService().init();
+    await NotificationService().requestPermissions();
+  } catch (e) {
+    print("알림 초기화 중 일부 에러 발생(무시하고 진행): $e");
   }
 
   // 3. 앱 실행

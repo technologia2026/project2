@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart'; 
 import '../models/medication.dart';
 
 class NotificationService {
@@ -28,7 +29,6 @@ class NotificationService {
       iOS: iosInit, 
     );
 
-    // ✅ 에디터가 알려준 정답: 파라미터 이름은 'settings' 입니다!
     await _notifications.initialize(
       settings: initSettings, 
     );
@@ -49,6 +49,15 @@ class NotificationService {
 
   // 💊 특정 약의 알림 모두 등록
   Future<void> scheduleMedicationNotifications(Medication med) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isPushEnabled = prefs.getBool('isPushEnabled') ?? true; 
+    bool isVibrationEnabled = prefs.getBool('isVibrationEnabled') ?? true; 
+
+    if (!isPushEnabled) {
+      print("🔔 알림 설정이 꺼져 있어 ${med.name} 알림을 예약하지 않습니다.");
+      return; 
+    }
+
     for (int day in med.selectedDays) {
       for (int i = 0; i < med.doseTimes.length; i++) {
         final timeStr = med.doseTimes[i];
@@ -57,20 +66,20 @@ class NotificationService {
 
         final notificationId = (med.id + day.toString() + i.toString()).hashCode.abs() % 100000;
 
-        // ✅ 에디터가 알려준 정답: id, title, body, scheduledDate, notificationDetails 전부 이름표를 붙이는 게 맞습니다!
         await _notifications.zonedSchedule(
           id: notificationId,
           title: '💊 약 드실 시간이에요!',
           body: '${med.name} (${med.dosage}) 잊지 말고 챙겨 드세요!',
           scheduledDate: _nextOccurrence(day, hour, minute),
-          notificationDetails: const NotificationDetails(
+          notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
               'medication_channel', '약 복용 알림',
               channelDescription: '약 먹을 시간을 알려줍니다.',
               importance: Importance.max,
               priority: Priority.high,
+              enableVibration: isVibrationEnabled, 
             ),
-            iOS: DarwinNotificationDetails(),
+            iOS: const DarwinNotificationDetails(),
           ),
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime, 
